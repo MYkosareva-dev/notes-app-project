@@ -3,7 +3,7 @@
 // Query reference: docs/supabase-js-reference.md
 
 import { supabase } from './supabase'
-import { normaliseTitle, sortNotes } from './notes'
+import { normaliseTitle, sortCollections, sortNotes } from './notes'
 
 /** A row of the `notes` table — see docs/supabase-schema.md */
 export type Note = {
@@ -16,9 +16,18 @@ export type Note = {
   updated_at: string
 }
 
+/** A row of the `collections` table — see docs/supabase-schema.md */
+export type Collection = {
+  id: number
+  name: string
+  created_at: string
+}
+
 export type CreateNoteInput = {
   title: string
   body?: string
+  /** Omit or pass null to create the note outside any collection. */
+  collection_id?: number | null
 }
 
 export type UpdateNoteInput = {
@@ -60,7 +69,11 @@ export async function getNote(id: number): Promise<Note> {
 export async function createNote(input: CreateNoteInput): Promise<Note> {
   const { data, error } = await supabase
     .from('notes')
-    .insert({ title: normaliseTitle(input.title), body: input.body ?? '' })
+    .insert({
+      title: normaliseTitle(input.title),
+      body: input.body ?? '',
+      collection_id: input.collection_id ?? null,
+    })
     .select()
     .single()
 
@@ -99,4 +112,81 @@ export async function deleteNote(id: number): Promise<void> {
   const { error } = await supabase.from('notes').delete().eq('id', id)
 
   if (error) fail(`deleteNote(${id})`, error)
+}
+
+/**
+ * Moves a note into a collection, or out of every collection when passed null.
+ * Like any other note write, this re-stamps `updated_at`.
+ */
+export async function setNoteCollection(
+  noteId: number,
+  collectionId: number | null
+): Promise<Note> {
+  const { data, error } = await supabase
+    .from('notes')
+    .update({
+      collection_id: collectionId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', noteId)
+    .select()
+    .single()
+
+  if (error) fail(`setNoteCollection(${noteId})`, error)
+  return data
+}
+
+// --- collections ----------------------------------------------------------
+
+export async function getCollections(): Promise<Collection[]> {
+  const { data, error } = await supabase
+    .from('collections')
+    .select('*')
+    .order('name')
+
+  if (error) fail('getCollections', error)
+  return sortCollections(data ?? [])
+}
+
+export async function createCollection(name: string): Promise<Collection> {
+  const trimmed = name.trim()
+  if (!trimmed) throw new Error('A collection needs a name')
+
+  const { data, error } = await supabase
+    .from('collections')
+    .insert({ name: trimmed })
+    .select()
+    .single()
+
+  if (error) fail('createCollection', error)
+  return data
+}
+
+/**
+ * Deletes the collection row and nothing else. Its notes survive: the foreign
+ * key is ON DELETE SET NULL, so the database clears their `collection_id`
+ * itself and they reappear under "All notes". Do not clear it from here.
+ */
+export async function deleteCollectionOnly(id: number): Promise<void> {
+  const { error } = await supabase.from('collections').delete().eq('id', id)
+
+  if (error) fail(`deleteCollectionOnly(${id})`, error)
+}
+
+/**
+ * Deletes every note in the collection and then the collection itself.
+ * Notes first: once the collection row is gone the database has already
+ * cleared `collection_id`, and there would be no way left to find them.
+ */
+export async function deleteCollectionWithNotes(id: number): Promise<void> {
+  const { error: notesError } = await supabase
+    .from('notes')
+    .delete()
+    .eq('collection_id', id)
+
+  if (notesError) fail(`deleteCollectionWithNotes(${id}) [notes]`, notesError)
+
+  const { error } = await supabase.from('collections').delete().eq('id', id)
+
+  if (error) fail(`deleteCollectionWithNotes(${id}) [collection]`, error)
 }

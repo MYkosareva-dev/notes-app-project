@@ -3,11 +3,21 @@
 import type { Note } from '../lib/db'
 import NoteCard from './NoteCard'
 
+export type EmptyState = {
+  title: string
+  description: string
+  /** Label for the create-a-note button shown alongside the message. */
+  action: string
+}
+
 type NotesGridProps = {
   notes: Note[]
   onOpen: (note: Note) => void
   onCreate: () => void
   creating: boolean
+  /** Wording depends on what is selected — an empty collection reads
+   *  differently from an empty "All notes". */
+  emptyState: EmptyState
 }
 
 export default function NotesGrid({
@@ -15,6 +25,7 @@ export default function NotesGrid({
   onOpen,
   onCreate,
   creating,
+  emptyState,
 }: NotesGridProps) {
   if (notes.length === 0) {
     return (
@@ -22,18 +33,15 @@ export default function NotesGrid({
         <span className="text-3xl" aria-hidden="true">
           📝
         </span>
-        <h2 className="text-lg font-medium">No notes yet</h2>
-        <p className="max-w-sm text-sm text-muted">
-          Notes you write show up here as cards. Start with a first thought — you
-          can always edit it later.
-        </p>
+        <h2 className="text-lg font-medium">{emptyState.title}</h2>
+        <p className="max-w-sm text-sm text-muted">{emptyState.description}</p>
         <button
           type="button"
           onClick={onCreate}
           disabled={creating}
           className="mt-2 rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-contrast shadow-sm transition hover:opacity-90 disabled:opacity-60"
         >
-          Create your first note
+          {emptyState.action}
         </button>
       </div>
     )
