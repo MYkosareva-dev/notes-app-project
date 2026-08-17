@@ -7,6 +7,7 @@ Supabase JavaScript client documentation.
 
 - Initializing the client — https://supabase.com/docs/reference/javascript/initializing
 - Select / insert / update / delete queries — https://supabase.com/docs/reference/javascript/select
+- Filtering (`eq`, `is`) — https://supabase.com/docs/reference/javascript/using-filters
 
 ## Creating the client
 
@@ -55,6 +56,24 @@ Delete one row by id:
 
 ```ts
 const { error } = await supabase.from('notes').delete().eq('id', id)
+```
+
+## Filtering
+
+Source: https://supabase.com/docs/reference/javascript/using-filters
+
+Match a column against a value — used by `deleteCollectionWithNotes` to find a
+collection's notes:
+
+```ts
+const { data, error } = await supabase.from('notes').select('*').eq('collection_id', id)
+```
+
+Match a NULL column. Note that `is(..., null)` is required for null checks —
+`eq(..., null)` does not work in PostgREST:
+
+```ts
+const { data, error } = await supabase.from('notes').select('*').is('collection_id', null)
 ```
 
 ## House rule

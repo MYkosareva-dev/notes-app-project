@@ -1,10 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import type { Note } from '../lib/db'
+import type { Collection, Note } from '../lib/db'
+import CollectionPicker from './CollectionPicker'
 
 type NoteEditorProps = {
   note: Note
+  collections: Collection[]
+  /** Persisted as soon as a collection is picked, independently of Save. */
+  onChangeCollection: (
+    noteId: number,
+    collectionId: number | null
+  ) => Promise<void>
   /** Resolves to the saved note, or to null if the save failed. */
   onSave: (
     id: number,
@@ -16,6 +23,8 @@ type NoteEditorProps = {
 
 export default function NoteEditor({
   note,
+  collections,
+  onChangeCollection,
   onSave,
   onDelete,
   onBack,
@@ -129,6 +138,11 @@ export default function NoteEditor({
           placeholder="Note title"
           aria-label="Note title"
           className="w-full bg-transparent text-2xl font-semibold tracking-tight outline-none placeholder:text-muted"
+        />
+        <CollectionPicker
+          collections={collections}
+          value={note.collection_id}
+          onChange={(collectionId) => onChangeCollection(note.id, collectionId)}
         />
         <textarea
           value={body}
