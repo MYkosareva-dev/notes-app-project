@@ -21,7 +21,7 @@ type SidebarProps = {
 }
 
 /**
- * Phase 2 sidebar: the "All notes" group, the collections tree, the
+ * Phase 2 sidebar: the "Uncollected" group, the collections tree, the
  * "New collection" control and the theme toggle. Search and the tag filter
  * arrive in later phases.
  */
@@ -54,7 +54,7 @@ export default function Sidebar({
               : 'hover:bg-surface-muted'
           }`}
         >
-          <span>All notes</span>
+          <span>Uncollected</span>
           <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted shadow-sm">
             {looseNoteCount}
           </span>

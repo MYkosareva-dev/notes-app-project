@@ -16,7 +16,7 @@ type NotesGridProps = {
   onCreate: () => void
   creating: boolean
   /** Wording depends on what is selected — an empty collection reads
-   *  differently from an empty "All notes". */
+   *  differently from an empty "Uncollected" group. */
   emptyState: EmptyState
 }
 

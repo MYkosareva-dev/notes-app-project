@@ -78,7 +78,7 @@ export default function NoteEditor({
           disabled={busy}
           className="rounded-full border border-border bg-surface px-4 py-2 text-sm shadow-sm transition hover:bg-surface-muted disabled:opacity-60"
         >
-          ← All notes
+          ← Back to notes
         </button>
 
         <span className="text-xs text-muted">
