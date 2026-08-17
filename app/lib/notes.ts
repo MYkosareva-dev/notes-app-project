@@ -38,7 +38,7 @@ export function sortCollections(collections: Collection[]): Collection[] {
 /** What the sidebar has selected, and therefore what the grid shows. */
 export type Selection = { kind: 'all' } | { kind: 'collection'; id: number }
 
-/** Notes that sit outside every collection — the "All notes" group. */
+/** Notes that sit outside every collection — the "Uncollected" group. */
 export function notesWithoutCollection(notes: Note[]): Note[] {
   return notes.filter((note) => note.collection_id === null)
 }

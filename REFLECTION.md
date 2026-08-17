@@ -17,6 +17,9 @@
 - Deliberately deferred: unit tests (not required at this stage of the sprint; noted as a follow-up once the Phase 2 UI settles).
 
 ## Phase 2 — Collections (to be filled)
+- Added zero-dependency node --test coverage for the pure helpers (20 tests) after the
+  review argued the risk had grown: Phase 2 introduced permanent data destruction while
+  the verification gate had stayed the same.
 
 ## Phase 3 — Tags (to be filled)
 

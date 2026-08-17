@@ -72,10 +72,14 @@ export default function Home() {
     }
   }, [])
 
-  /** Used by the error banner's Retry button. */
-  async function reload() {
+  /**
+   * Refetches everything. Used by the error banner's Retry button, and after a
+   * failed collection delete — which passes `keepError` so the explanation of
+   * what went wrong survives the refetch.
+   */
+  async function reload({ keepError = false } = {}) {
     setLoading(true)
-    setError(null)
+    if (!keepError) setError(null)
     try {
       const [loadedNotes, loadedCollections] = await Promise.all([
         getNotes(),
@@ -209,7 +213,7 @@ export default function Home() {
     try {
       await deleteCollectionOnly(id)
       // The database cleared `collection_id` itself (ON DELETE SET NULL);
-      // mirror that locally so the notes show up under "All notes".
+      // mirror that locally so the notes show up under "Uncollected".
       setNotes((current) =>
         current.map((note) =>
           note.collection_id === id ? { ...note, collection_id: null } : note
@@ -218,7 +222,10 @@ export default function Home() {
       forgetCollection(id)
       setDeleteTarget(null)
     } catch (caught) {
+      // Nothing was deleted, so local state is still accurate — just close the
+      // dialog so the error banner behind it is readable.
       setError(describe(caught))
+      setDeleteTarget(null)
     } finally {
       setDeletingCollection(false)
     }
@@ -228,34 +235,37 @@ export default function Home() {
     setDeletingCollection(true)
     setError(null)
     try {
-      await deleteCollectionWithNotes(id)
-      setNotes((current) => {
-        const survivors = current.filter((note) => note.collection_id !== id)
-        // Close the editor if the note it was showing has just been deleted.
-        setOpenNoteId((openId) =>
-          survivors.some((note) => note.id === openId) ? openId : null
-        )
-        return survivors
-      })
+      // Drop exactly the notes the database reports deleting, rather than
+      // re-deriving the set from a local copy that may be out of date.
+      const deletedIds = new Set(await deleteCollectionWithNotes(id))
+      setNotes((current) => current.filter((note) => !deletedIds.has(note.id)))
+      if (openNoteId !== null && deletedIds.has(openNoteId)) {
+        setOpenNoteId(null)
+      }
       forgetCollection(id)
       setDeleteTarget(null)
     } catch (caught) {
+      // This operation is not atomic: the notes may already be gone while the
+      // collection survives. Refetch so the sidebar can never keep offering
+      // rows that no longer exist.
       setError(describe(caught))
+      setDeleteTarget(null)
+      await reload({ keepError: true })
     } finally {
       setDeletingCollection(false)
     }
   }
 
   const heading =
-    selection.kind === 'all' ? 'All notes' : (selectedCollection?.name ?? '')
+    selection.kind === 'all' ? 'Uncollected' : (selectedCollection?.name ?? '')
 
   const emptyState =
     selection.kind === 'all'
       ? {
-          title: 'No notes yet',
+          title: 'Nothing uncollected',
           description:
-            'Notes that do not belong to a collection show up here. Start with a first thought — you can file it away later.',
-          action: 'Create your first note',
+            'Notes that do not belong to a collection show up here. Start with a first thought — you can file it into a collection later.',
+          action: 'New note',
         }
       : {
           title: 'This collection is empty',

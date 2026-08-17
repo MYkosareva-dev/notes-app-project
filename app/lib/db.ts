@@ -165,7 +165,7 @@ export async function createCollection(name: string): Promise<Collection> {
 /**
  * Deletes the collection row and nothing else. Its notes survive: the foreign
  * key is ON DELETE SET NULL, so the database clears their `collection_id`
- * itself and they reappear under "All notes". Do not clear it from here.
+ * itself and they reappear under "Uncollected". Do not clear it from here.
  */
 export async function deleteCollectionOnly(id: number): Promise<void> {
   const { error } = await supabase.from('collections').delete().eq('id', id)
@@ -174,19 +174,52 @@ export async function deleteCollectionOnly(id: number): Promise<void> {
 }
 
 /**
- * Deletes every note in the collection and then the collection itself.
- * Notes first: once the collection row is gone the database has already
+ * Deletes every note in the collection and then the collection itself, and
+ * returns the ids of the notes that were actually deleted.
+ *
+ * Notes go first: once the collection row is gone the database has already
  * cleared `collection_id`, and there would be no way left to find them.
+ *
+ * The ids are read before deleting rather than deleting by `collection_id`
+ * directly, for three reasons. The caller learns exactly which rows to drop
+ * from its own state instead of re-deriving them from a possibly stale copy;
+ * re-running after a failure deletes the same set and nothing more; and a note
+ * moved into this collection by someone else in the meantime survives and
+ * lands in "Uncollected" rather than being destroyed without being counted.
+ *
+ * There is no transaction — supabase-js cannot open one, and CLAUDE.md rules
+ * out an RPC. If the second step fails the notes are already gone, so the
+ * thrown error names which step failed and the caller must refetch.
  */
-export async function deleteCollectionWithNotes(id: number): Promise<void> {
-  const { error: notesError } = await supabase
+export async function deleteCollectionWithNotes(id: number): Promise<number[]> {
+  const { data: rows, error: selectError } = await supabase
     .from('notes')
-    .delete()
+    .select('id')
     .eq('collection_id', id)
 
-  if (notesError) fail(`deleteCollectionWithNotes(${id}) [notes]`, notesError)
+  if (selectError)
+    fail(`deleteCollectionWithNotes(${id}) [find notes]`, selectError)
+
+  const noteIds: number[] = (rows ?? []).map((row: { id: number }) => row.id)
+
+  if (noteIds.length > 0) {
+    const { error: notesError } = await supabase
+      .from('notes')
+      .delete()
+      .in('id', noteIds)
+
+    if (notesError)
+      fail(`deleteCollectionWithNotes(${id}) [delete notes]`, notesError)
+  }
 
   const { error } = await supabase.from('collections').delete().eq('id', id)
 
-  if (error) fail(`deleteCollectionWithNotes(${id}) [collection]`, error)
+  if (error) {
+    fail(
+      `deleteCollectionWithNotes(${id}) [delete collection, ${noteIds.length} note(s) already deleted]`,
+      error
+    )
+  }
+
+  return noteIds
 }
