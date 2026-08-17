@@ -16,6 +16,7 @@
   --accent-contrast: #ffffff;
   --danger: #dc4a4a;
   --danger-soft: #fdeaea;
+  --danger-contrast: #ffffff;
 }
 
 /* Colour tokens — dark theme */
@@ -31,6 +32,9 @@
   --accent-contrast: #16161d;
   --danger: #f38b8b;
   --danger-soft: #3a2323;
+  /* Dark ink on the light-pink dark-theme danger colour — white would sit at
+     about 2.2:1 against it, well under the 4.5:1 minimum. */
+  --danger-contrast: #16161d;
 }
 
 @theme inline {
@@ -45,6 +49,7 @@
   --color-accent-contrast: var(--accent-contrast);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-danger-contrast: var(--danger-contrast);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

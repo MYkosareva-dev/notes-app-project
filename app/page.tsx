@@ -8,6 +8,7 @@ import {
   updateNote,
   type Note,
 } from './lib/db'
+import { sortNotes } from './lib/notes'
 import NoteEditor from './components/NoteEditor'
 import NotesGrid from './components/NotesGrid'
 import Sidebar from './components/Sidebar'
@@ -23,8 +24,9 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [openNoteId, setOpenNoteId] = useState<number | null>(null)
 
-  // Initial load. State is only touched after the await so the effect does not
-  // trigger a cascading render on mount.
+  // Initial load. The `active` flag drops the result if the component unmounted
+  // while the request was in flight (which React's development-mode double
+  // invocation of effects makes routine).
   useEffect(() => {
     let active = true
     void (async () => {
@@ -62,7 +64,7 @@ export default function Home() {
     setError(null)
     try {
       const created = await createNote({ title: 'Untitled note', body: '' })
-      setNotes((current) => [created, ...current])
+      setNotes((current) => sortNotes([created, ...current]))
       setOpenNoteId(created.id)
     } catch (caught) {
       setError(describe(caught))
@@ -71,18 +73,22 @@ export default function Home() {
     }
   }
 
-  async function handleSave(id: number, input: { title: string; body: string }) {
+  /** Returns the saved note, or null if the write failed, so the editor can
+   *  keep the user's text on screen instead of navigating away from it. */
+  async function handleSave(
+    id: number,
+    input: { title: string; body: string }
+  ): Promise<Note | null> {
     setError(null)
     try {
       const saved = await updateNote(id, input)
-      // Re-sort locally: the fresh updated_at moves this note to the front.
       setNotes((current) =>
-        [saved, ...current.filter((note) => note.id !== id)].sort(
-          (a, b) => b.updated_at.localeCompare(a.updated_at)
-        )
+        sortNotes([saved, ...current.filter((note) => note.id !== id)])
       )
+      return saved
     } catch (caught) {
       setError(describe(caught))
+      return null
     }
   }
 

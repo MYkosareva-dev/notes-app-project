@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Notes
 
-## Getting Started
+A local notes app: notes grouped into collections, cross-cutting coloured tags,
+and live search across everything. Two panels — a sidebar for navigation and
+filtering, and a main area that shows either a grid of note cards or the editor.
 
-First, run the development server:
+Built with Next.js (App Router) + TypeScript, Tailwind CSS, and Supabase through
+the `supabase-js` client. Light and dark themes are supported throughout.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Running it
+
+Requires Node 20+ and a `.env.local` in the project root holding the Supabase
+project credentials:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app runs at http://localhost:3000. There is no deployment step and no
+authentication — this is a local development project.
 
-## Learn More
+## How it is organised
 
-To learn more about Next.js, take a look at the following resources:
+- `app/lib/supabase.ts` — creates the Supabase client, once. Imported only by `db.ts`.
+- `app/lib/db.ts` — the single module that reads from and writes to the database.
+  Components import named functions from here and never touch the client directly.
+- `app/lib/notes.ts` — pure note logic (sort order, title normalisation) shared
+  between the data layer and the UI.
+- `app/components/` — the sidebar, note grid, note card, editor, and theme toggle.
+- `docs/` — the live database schema and cited `supabase-js` references.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The database schema is documented in [docs/supabase-schema.md](docs/supabase-schema.md).
+Tables are managed by hand in the Supabase dashboard; the app never creates or
+alters them.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Project rules for contributors — and for AI agents working in this repository —
+are in [CLAUDE.md](CLAUDE.md).
 
-## Deploy on Vercel
+## Status
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Notes CRUD is in place. Collections, tags, search, and pinned-note sorting are
+being added in later phases.

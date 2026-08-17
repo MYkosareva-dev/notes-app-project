@@ -3,6 +3,7 @@
 // Query reference: docs/supabase-js-reference.md
 
 import { supabase } from './supabase'
+import { normaliseTitle, sortNotes } from './notes'
 
 /** A row of the `notes` table — see docs/supabase-schema.md */
 export type Note = {
@@ -30,7 +31,11 @@ function fail(action: string, error: { message: string }): never {
   throw new Error(`${action} failed: ${error.message}`)
 }
 
-/** All notes, newest edit first. Pinned-first sorting arrives in a later phase. */
+/**
+ * All notes, newest edit first. The database does the ordering, but the result
+ * still goes through `sortNotes` so that this list and any list the UI re-sorts
+ * after an edit are guaranteed to use the same comparator.
+ */
 export async function getNotes(): Promise<Note[]> {
   const { data, error } = await supabase
     .from('notes')
@@ -38,7 +43,7 @@ export async function getNotes(): Promise<Note[]> {
     .order('updated_at', { ascending: false })
 
   if (error) fail('getNotes', error)
-  return data ?? []
+  return sortNotes(data ?? [])
 }
 
 export async function getNote(id: number): Promise<Note> {
@@ -55,7 +60,7 @@ export async function getNote(id: number): Promise<Note> {
 export async function createNote(input: CreateNoteInput): Promise<Note> {
   const { data, error } = await supabase
     .from('notes')
-    .insert({ title: input.title, body: input.body ?? '' })
+    .insert({ title: normaliseTitle(input.title), body: input.body ?? '' })
     .select()
     .single()
 
@@ -63,14 +68,25 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
   return data
 }
 
-/** Every update also stamps `updated_at` — the database does not do it for us. */
+/**
+ * Every update also stamps `updated_at` — the database does not do it for us.
+ *
+ * Columns are listed one by one rather than spread from `input`, so a caller
+ * can never write a field this function did not intend to expose.
+ */
 export async function updateNote(
   id: number,
   input: UpdateNoteInput
 ): Promise<Note> {
+  const patch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  }
+  if (input.title !== undefined) patch.title = normaliseTitle(input.title)
+  if (input.body !== undefined) patch.body = input.body
+
   const { data, error } = await supabase
     .from('notes')
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update(patch)
     .eq('id', id)
     .select()
     .single()
